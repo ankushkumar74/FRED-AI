@@ -1,0 +1,44 @@
+# Starter metric pack — BLUEPRINT 7.5, 8.7.
+# A connector that delivers raw tables is 20% of the value. A connector that
+# delivers raw tables plus correctly-defined metrics is 100% of it.
+version: 1
+
+metrics:
+  - key: mrr
+    label: Monthly Recurring Revenue
+    description: >
+      Sum of normalized monthly subscription value for active subscriptions.
+      Excludes one-time charges, taxes, and internal test accounts.
+    entity: subscriptions
+    agg: sum
+    sql: "{{entity}}.mrr_amount"
+    filters:
+      - "{{entity}}.status = 'active'"
+      - "{{entity}}.is_internal = false"
+    time_column: period_start
+    format: currency
+    higher_is_better: true
+    synonyms: [recurring revenue, monthly revenue, subscription revenue]
+    certified: false          # certify after the customer confirms the number
+
+  - key: gross_churn_rate
+    label: Gross Revenue Churn
+    type: ratio
+    numerator: churned_mrr
+    denominator: starting_mrr
+    format: percent
+    higher_is_better: false
+    synonyms: [churn, revenue churn, gross churn]
+
+  - key: cac
+    label: Customer Acquisition Cost
+    type: ratio
+    numerator: sales_and_marketing_spend
+    denominator: new_customers
+    format: currency
+    higher_is_better: false
+    synonyms: [acquisition cost, cost per customer]
+
+time_intelligence:
+  week_starts_on: monday
+  default_comparisons: [prior_period, prior_year, plan]

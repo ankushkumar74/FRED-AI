@@ -1,0 +1,40 @@
+[importlinter]
+root_packages = apps, agents, services, shared, workers, pipelines
+
+# ---------------------------------------------------------------------------
+# These contracts encode the architecture in BLUEPRINT Part 3 and Part 19.3.
+# They are the difference between a modular monolith and a monolith.
+# ---------------------------------------------------------------------------
+
+[importlinter:contract:layers]
+name = Layered architecture
+type = layers
+layers =
+    apps
+    agents
+    services
+    shared
+
+[importlinter:contract:services-framework-free]
+name = services/ must not know about the web framework
+type = forbidden
+source_modules = services
+forbidden_modules = fastapi, starlette
+
+[importlinter:contract:services-never-call-agents]
+name = services/ must never depend on agents/ (determinism boundary)
+type = forbidden
+source_modules = services
+forbidden_modules = agents
+
+[importlinter:contract:evidence-is-llm-free]
+name = The evidence engine must never call a model. This is the anti-hallucination guarantee.
+type = forbidden
+source_modules = services.evidence
+forbidden_modules = litellm, anthropic, openai, agents
+
+[importlinter:contract:shared-is-a-leaf]
+name = shared/ imports nothing internal
+type = forbidden
+source_modules = shared
+forbidden_modules = apps, agents, services, workers, pipelines

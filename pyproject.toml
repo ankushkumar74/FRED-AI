@@ -1,0 +1,44 @@
+[project]
+name = "ai-analyst"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "sqlalchemy>=2.0",
+  "alembic>=1.14",
+  "asyncpg>=0.30",
+  "pgvector>=0.3",
+  "redis>=5.2",
+  "arq>=0.26",
+  "sqlglot>=25.0",          # AST validation + transpilation — BLUEPRINT 4.3
+  "duckdb>=1.1",
+  "pyarrow>=18.0",
+  "litellm>=1.52",          # provider routing only, not orchestration
+  "statsmodels>=0.14",      # STL, ETS, ARIMA — evidence engine
+  "ruptures>=1.1",          # changepoint detection
+  "scikit-learn>=1.5",
+  "lightgbm>=4.5",
+  "langfuse>=2.53",
+  "opentelemetry-sdk>=1.28",
+  "sentry-sdk>=2.18",
+  "boto3>=1.35",
+  "httpx>=0.28",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio", "pytest-cov", "testcontainers",
+       "ruff>=0.8", "mypy>=1.13", "import-linter>=2.1", "promptfoo"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

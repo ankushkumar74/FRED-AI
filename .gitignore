@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+.pnpm-store/
+
+# Env & secrets — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.yaml
+
+# Infra state
+*.tfstate
+*.tfstate.*
+.terraform/
+.terragrunt-cache/
+
+# Local data
+*.duckdb
+*.sqlite
+data/
+.DS_Store
+
+# Docs build
+site/
+site_docs/
