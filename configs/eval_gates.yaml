@@ -1,0 +1,11 @@
+# AI quality gates — BLUEPRINT 19.4.
+# numeric_fidelity is a hard 100%: it is the product's core claim.
+metric_resolution_accuracy: 0.95
+sql_execution_accuracy:     0.90
+root_cause_recall:          0.85
+root_cause_precision:       0.90
+numeric_fidelity:           1.00
+hedging_correctness:        0.95
+refusal_correctness:        0.90
+max_cost_regression_pct:    0.20
+max_latency_regression_pct: 0.20

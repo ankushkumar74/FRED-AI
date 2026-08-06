@@ -1,0 +1,32 @@
+name: CI
+on: [pull_request, push]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-groups
+      - name: Lint and typecheck
+        run: uv run ruff check . && uv run mypy --strict services shared agents
+      - name: Architecture contracts       # BLUEPRINT 19.3 — the boundaries are real or they are not
+        run: uv run lint-imports
+      - name: Unit + integration
+        run: uv run pytest tests/unit tests/integration -q --cov=services --cov-fail-under=80
+      - name: Evidence engine coverage gate
+        run: uv run pytest tests/unit/evidence --cov=services.evidence --cov-fail-under=95
+
+  evals:
+    # AI quality gate. Runs on any change to agents/ or the semantic layer.
+    # A prompt change without an eval run is an unreviewed behaviour change.
+    if: contains(github.event.pull_request.changed_files, 'agents/') || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-groups
+      - name: Golden-set evaluation
+        run: uv run python -m agents.evals.run --dataset tests/evals/golden.jsonl --fail-under-config configs/eval_gates.yaml
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
