@@ -1,0 +1,237 @@
+# E-commerce starter metric pack — BLUEPRINT 7.5, 8.2.
+#
+# This pack is also the fixture the compiler and eval suite run against, so it
+# exercises every metric kind on purpose: simple, derived, same-entity ratio,
+# and cross-entity ratio (CAC, where spend and customers live in different
+# tables and a row-level join would produce a fabricated number).
+version: 1
+
+entities:
+  - key: orders
+    dataset: fct_orders
+    primary_key: order_id
+    default_time_column: ordered_at
+    description: One row per customer order, net of nothing — refunds are a separate column.
+    dimensions:
+      - key: channel
+        label: Acquisition Channel
+        synonyms: [source, traffic source, acquisition channel, marketing channel]
+      - key: region
+        label: Region
+        synonyms: [geo, market, territory, area]
+      - key: device
+        label: Device
+        synonyms: [platform, device type]
+      - key: status
+        label: Order Status
+      - key: is_first_order
+        label: First Order
+        sql: "{{entity}}.order_sequence = 1"
+        data_type: boolean
+        synonyms: [new customer order, first purchase]
+
+  - key: customers
+    dataset: dim_customers
+    primary_key: customer_id
+    default_time_column: signup_at
+    dimensions:
+      - key: segment
+        label: Customer Segment
+        synonyms: [tier, customer tier, plan]
+      - key: country
+        label: Country
+
+  - key: order_items
+    dataset: fct_order_items
+    primary_key: order_item_id
+    description: One row per line item. Joining orders to this fans out.
+    dimensions:
+      - key: category
+        label: Product Category
+        synonyms: [product category, product line, department]
+      - key: sku
+        label: SKU
+
+  - key: marketing_spend
+    dataset: fct_marketing_spend
+    default_time_column: spend_date
+    description: Daily spend by channel and region. Shares channel/region with orders.
+    dimensions:
+      - key: channel
+        label: Acquisition Channel
+        synonyms: [source, traffic source, marketing channel]
+      - key: region
+        label: Region
+        synonyms: [geo, market, territory]
+      - key: campaign
+        label: Campaign
+
+joins:
+  - left: orders
+    right: customers
+    type: many_to_one          # safe to aggregate across
+    on: "orders.customer_id = customers.customer_id"
+
+  - left: orders
+    right: order_items
+    type: one_to_many          # fans out — the compiler refuses to aggregate across this
+    on: "orders.order_id = order_items.order_id"
+
+metrics:
+  # ---- simple ---------------------------------------------------------
+  - key: gross_revenue
+    label: Gross Revenue
+    description: >
+      Total order value before refunds and discounts. Excludes cancelled and
+      test orders and internal accounts. Recognised on order date.
+    entity: orders
+    agg: sum
+    sql: "{{entity}}.order_total"
+    filters:
+      - "{{entity}}.status NOT IN ('cancelled', 'test')"
+      - "{{entity}}.is_internal = FALSE"
+    format: currency
+    unit: USD
+    higher_is_better: true
+    synonyms: [revenue, sales, top line, gross sales, GMV, turnover]
+    certified: true
+    owner: finance@example.com
+
+  - key: refunds
+    label: Refunds
+    entity: orders
+    agg: sum
+    sql: "{{entity}}.refund_amount"
+    filters:
+      - "{{entity}}.status NOT IN ('cancelled', 'test')"
+      - "{{entity}}.is_internal = FALSE"
+    format: currency
+    higher_is_better: false
+    synonyms: [returns, refunded amount, chargebacks]
+    certified: true
+
+  - key: discounts
+    label: Discounts
+    entity: orders
+    agg: sum
+    sql: "{{entity}}.discount_amount"
+    filters:
+      - "{{entity}}.status NOT IN ('cancelled', 'test')"
+      - "{{entity}}.is_internal = FALSE"
+    format: currency
+    higher_is_better: false
+    synonyms: [promotions, promo spend, markdowns]
+
+  - key: order_count
+    label: Orders
+    entity: orders
+    agg: count
+    sql: "{{entity}}.order_id"
+    filters:
+      - "{{entity}}.status NOT IN ('cancelled', 'test')"
+      - "{{entity}}.is_internal = FALSE"
+    format: number
+    synonyms: [orders, number of orders, order volume, transactions]
+    certified: true
+
+  - key: new_customers
+    label: New Customers
+    description: Distinct customers placing their first order in the period.
+    entity: orders
+    agg: count_distinct
+    sql: "{{entity}}.customer_id"
+    filters:
+      - "{{entity}}.status NOT IN ('cancelled', 'test')"
+      - "{{entity}}.is_internal = FALSE"
+      - "{{entity}}.order_sequence = 1"
+    format: number
+    synonyms: [new customers, acquisitions, first-time buyers, newly acquired customers]
+    certified: true
+
+  - key: marketing_spend
+    label: Marketing Spend
+    entity: marketing_spend
+    agg: sum
+    sql: "{{entity}}.spend"
+    format: currency
+    higher_is_better: false
+    synonyms: [ad spend, media spend, paid spend, marketing cost, budget]
+    certified: true
+
+  - key: clicks
+    label: Clicks
+    entity: marketing_spend
+    agg: sum
+    sql: "{{entity}}.clicks"
+    format: number
+    synonyms: [ad clicks, link clicks]
+
+  - key: impressions
+    label: Impressions
+    entity: marketing_spend
+    agg: sum
+    sql: "{{entity}}.impressions"
+    format: number
+    synonyms: [ad impressions, views, reach]
+
+  # ---- derived --------------------------------------------------------
+  - key: net_revenue
+    label: Net Revenue
+    description: Gross revenue less refunds and discounts.
+    type: derived
+    expression: "gross_revenue - refunds - discounts"
+    format: currency
+    unit: USD
+    higher_is_better: true
+    synonyms: [net sales, revenue net of refunds, net turnover]
+    certified: true
+    owner: finance@example.com
+
+  # ---- same-entity ratio ----------------------------------------------
+  - key: aov
+    label: Average Order Value
+    description: Net revenue divided by order count. Recomputed at every grain.
+    type: ratio
+    numerator: net_revenue
+    denominator: order_count
+    format: currency
+    unit: USD
+    synonyms: [average order value, AOV, basket size, average basket]
+    certified: true
+
+  # ---- cross-entity ratios --------------------------------------------
+  - key: cac
+    label: Customer Acquisition Cost
+    description: Marketing spend divided by new customers acquired in the period.
+    type: ratio
+    numerator: marketing_spend
+    denominator: new_customers
+    format: currency
+    unit: USD
+    higher_is_better: false
+    synonyms: [acquisition cost, cost per customer, CAC, cost per acquisition, CPA]
+    certified: true
+
+  - key: roas
+    label: Return on Ad Spend
+    type: ratio
+    numerator: gross_revenue
+    denominator: marketing_spend
+    format: number
+    higher_is_better: true
+    synonyms: [ROAS, return on ad spend, ad efficiency, media efficiency]
+
+  - key: ctr
+    label: Click-Through Rate
+    type: ratio
+    numerator: clicks
+    denominator: impressions
+    format: percent
+    higher_is_better: true
+    synonyms: [CTR, click through rate, click rate]
+
+time_intelligence:
+  fiscal_year_start: "01-01"
+  week_starts_on: monday
+  default_comparisons: [prior_period, prior_year]
+  timezone: UTC
