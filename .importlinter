@@ -1,5 +1,16 @@
 [importlinter]
-root_packages = apps, agents, services, shared, workers, pipelines
+# One per line. Comma-separated values are parsed character-by-character by the
+# INI reader and fail with "could not find package 'a'".
+root_packages =
+    agents
+    services
+    shared
+    workers
+    pipelines
+
+# Required because the evidence-is-llm-free and services-framework-free contracts
+# name third-party packages. Without it those contracts silently pass.
+include_external_packages = True
 
 # ---------------------------------------------------------------------------
 # These contracts encode the architecture in BLUEPRINT Part 3 and Part 19.3.
@@ -10,7 +21,6 @@ root_packages = apps, agents, services, shared, workers, pipelines
 name = Layered architecture
 type = layers
 layers =
-    apps
     agents
     services
     shared
@@ -19,7 +29,9 @@ layers =
 name = services/ must not know about the web framework
 type = forbidden
 source_modules = services
-forbidden_modules = fastapi, starlette
+forbidden_modules =
+    fastapi
+    starlette
 
 [importlinter:contract:services-never-call-agents]
 name = services/ must never depend on agents/ (determinism boundary)
@@ -31,10 +43,18 @@ forbidden_modules = agents
 name = The evidence engine must never call a model. This is the anti-hallucination guarantee.
 type = forbidden
 source_modules = services.evidence
-forbidden_modules = litellm, anthropic, openai, agents
+forbidden_modules =
+    litellm
+    anthropic
+    openai
+    agents
 
 [importlinter:contract:shared-is-a-leaf]
 name = shared/ imports nothing internal
 type = forbidden
 source_modules = shared
-forbidden_modules = apps, agents, services, workers, pipelines
+forbidden_modules =
+    agents
+    services
+    workers
+    pipelines

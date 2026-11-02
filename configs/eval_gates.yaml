@@ -1,11 +1,40 @@
 # AI quality gates — BLUEPRINT 19.4.
-# numeric_fidelity is a hard 100%: it is the product's core claim.
-metric_resolution_accuracy: 0.95
-sql_execution_accuracy:     0.90
-root_cause_recall:          0.85
-root_cause_precision:       0.90
-numeric_fidelity:           1.00
-hedging_correctness:        0.95
-refusal_correctness:        0.90
-max_cost_regression_pct:    0.20
-max_latency_regression_pct: 0.20
+#
+# These are floors, not targets. A PR that drops a scorer below its gate does not
+# merge. Gates sit a little under the current measured score so ordinary variance
+# does not block the build, but not so far under that a real regression hides.
+#
+# Measured on tests/evals/golden.jsonl at the Phase 1 slice: all five at 100%.
+
+# --- Phase 1: implemented and gated ---------------------------------------
+
+# Natural language -> correct MetricRef.
+resolution_accuracy: 0.95
+
+# 'by channel' / 'per region' -> correct dimension.
+dimension_accuracy: 0.90
+
+# Compiled SQL returns the same values as independently hand-written reference
+# SQL over the same fixture. This is the scorer that catches a silently wrong
+# compiler, so the gate is deliberately high.
+sql_execution_accuracy: 0.95
+
+# Did we refuse the queries that would produce inflated or fabricated numbers
+# (fan-out joins, dimensions one side of a cross-entity ratio does not have)?
+# No tolerance: emitting a wrong number is the one failure the product cannot have.
+refusal_correctness: 1.00
+
+# Did we ASK when the question was genuinely ambiguous or named an undefined
+# metric, instead of guessing? Guessing is how a wrong number reaches a board deck.
+clarification_recall: 0.85
+
+# --- Phase 2+: scorers exist in the blueprint, not yet measured -------------
+# Uncommenting one before its pipeline stage ships just fails the build on a
+# scorer that reports nothing, so they stay off until there is something to score.
+#
+# numeric_fidelity:           1.00   # every number in prose traces to a Finding
+# root_cause_recall:          0.85   # did we find the planted cause?
+# root_cause_precision:       0.90   # did we assert causes that are not there?
+# hedging_correctness:        0.95   # language matches the confidence band
+# max_cost_regression_pct:    0.20
+# max_latency_regression_pct: 0.20

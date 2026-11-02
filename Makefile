@@ -1,4 +1,4 @@
-.PHONY: dev down migrate seed test eval lint fmt arch api worker web
+.PHONY: dev down migrate seed test eval demo lint fmt arch api worker web
 
 dev:            ## full local stack
 	docker compose up --build
@@ -9,8 +9,8 @@ down:
 migrate:
 	uv run alembic -c shared/db/migrations/alembic.ini upgrade head
 
-seed:
-	uv run python scripts/seed_demo.py
+seed:           ## deterministic fixture with a planted root cause
+	uv run python scripts/seed_demo.py --out demo.duckdb
 
 lint:
 	uv run ruff check . && uv run mypy --strict services shared agents
@@ -24,8 +24,12 @@ arch:           ## module boundary contracts — see BLUEPRINT 19.3
 test:
 	uv run pytest tests/unit tests/integration -q --cov=services --cov=shared
 
-eval:           ## AI golden-set evaluation — gates every agents/ change
-	uv run python -m agents.evals.run --dataset tests/evals/golden.jsonl
+eval: seed      ## golden-set evaluation — gates every agents/ or semantic/ change
+	uv run python -m agents.evals.run --dataset tests/evals/golden.jsonl --database demo.duckdb
+
+demo:           ## ask a question end to end, no services required
+	uv run python scripts/ask.py "why did revenue drop last week"
+
 
 api:
 	uv run uvicorn apps.api.main:app --reload --port 8000
