@@ -11,8 +11,8 @@ from datetime import date
 import pytest
 
 from services.semantic.compiler import (
-    Compiler,
     CompileError,
+    Compiler,
     DimensionNotShared,
     FanOutError,
 )

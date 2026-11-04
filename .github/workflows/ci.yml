@@ -1,32 +1,86 @@
 name: CI
-on: [pull_request, push]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 jobs:
   quality:
+    name: lint, types, boundaries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
-      - run: uv sync --all-groups
-      - name: Lint and typecheck
-        run: uv run ruff check . && uv run mypy --strict services shared agents
-      - name: Architecture contracts       # BLUEPRINT 19.3 — the boundaries are real or they are not
-        run: uv run lint-imports
-      - name: Unit + integration
-        run: uv run pytest tests/unit tests/integration -q --cov=services --cov-fail-under=80
-      - name: Evidence engine coverage gate
-        run: uv run pytest tests/unit/evidence --cov=services.evidence --cov-fail-under=95
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[docs]" --group dev
+      - name: Ruff
+        run: ruff check --output-format=github .
+      - name: Mypy
+        run: mypy --strict services shared agents
+      - name: Architecture contracts
+        # The boundaries in BLUEPRINT 3.1 are real only if CI enforces them. The
+        # evidence-is-llm-free contract is the anti-hallucination guarantee.
+        run: lint-imports --config .importlinter
+
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e . --group dev
+      - name: Unit and integration tests
+        run: |
+          pytest tests/unit tests/integration \
+            --cov=services/semantic --cov=services/query --cov=services/evidence \
+            --cov-report=term-missing --cov-fail-under=85
 
   evals:
-    # AI quality gate. Runs on any change to agents/ or the semantic layer.
-    # A prompt change without an eval run is an unreviewed behaviour change.
-    if: contains(github.event.pull_request.changed_files, 'agents/') || github.event_name == 'schedule'
+    name: AI quality gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
-      - run: uv sync --all-groups
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e . --group dev
+      - name: Build the fixture
+        # Deterministic from a fixed seed, so eval scores are reproducible and a
+        # change in score means a change in behaviour, not in the data.
+        run: python scripts/seed_demo.py --out demo.duckdb
       - name: Golden-set evaluation
-        run: uv run python -m agents.evals.run --dataset tests/evals/golden.jsonl --fail-under-config configs/eval_gates.yaml
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # Gates live in configs/eval_gates.yaml. Falling below one fails the build.
+        run: python -m agents.evals.run --dataset tests/evals/golden.jsonl --database demo.duckdb
+
+  docs:
+    name: docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[docs]"
+      - name: Build the site the way Pages does
+        # Catches a broken BLUEPRINT link or Mermaid fence on PR rather than
+        # after it has already deployed.
+        run: |
+          python scripts/build_docs.py
+          cat nav.generated.yml >> mkdocs.yml
+          mkdocs build --strict

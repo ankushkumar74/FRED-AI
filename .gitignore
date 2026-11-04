@@ -40,3 +40,8 @@ data/
 # Docs build
 site/
 site_docs/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+nav.generated.yml

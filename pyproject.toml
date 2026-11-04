@@ -1,44 +1,101 @@
 [project]
 name = "ai-analyst"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
+
+# Core: what the Phase 1 slice actually imports. Keeping this honest means CI
+# installs in seconds instead of building lightgbm for code that does not exist
+# yet, and a reader can tell what is real from what is planned.
 dependencies = [
+  "pydantic>=2.9",
+  "pyyaml>=6.0",
+  "sqlglot>=25.0",          # AST validation + transpilation — BLUEPRINT 4.3
+  "duckdb>=1.1",
+  "pyarrow>=18.0",
+]
+
+[project.optional-dependencies]
+# Phase 1 service tier — not yet exercised by any code path.
+api = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.32",
-  "pydantic>=2.9",
   "pydantic-settings>=2.6",
   "sqlalchemy>=2.0",
   "alembic>=1.14",
   "asyncpg>=0.30",
+  "psycopg[binary]>=3.2",
   "pgvector>=0.3",
   "redis>=5.2",
   "arq>=0.26",
-  "sqlglot>=25.0",          # AST validation + transpilation — BLUEPRINT 4.3
-  "duckdb>=1.1",
-  "pyarrow>=18.0",
-  "litellm>=1.52",          # provider routing only, not orchestration
-  "statsmodels>=0.14",      # STL, ETS, ARIMA — evidence engine
-  "ruptures>=1.1",          # changepoint detection
-  "scikit-learn>=1.5",
-  "lightgbm>=4.5",
-  "langfuse>=2.53",
-  "opentelemetry-sdk>=1.28",
-  "sentry-sdk>=2.18",
-  "boto3>=1.35",
   "httpx>=0.28",
 ]
+# Phase 2: the evidence engine and forecasting (BLUEPRINT Parts 12 and 14).
+stats = ["statsmodels>=0.14", "ruptures>=1.1", "scikit-learn>=1.5", "lightgbm>=4.5"]
+# Phase 2: agent runtime and its observability.
+agents = ["litellm>=1.52", "langfuse>=2.53"]
+ops = ["opentelemetry-sdk>=1.28", "sentry-sdk>=2.18", "boto3>=1.35"]
+docs = ["mkdocs-material>=9.5", "pymdown-extensions>=10.0"]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "pytest-asyncio", "pytest-cov", "testcontainers",
-       "ruff>=0.8", "mypy>=1.13", "import-linter>=2.1", "promptfoo"]
+dev = [
+  "pytest>=8.3", "pytest-cov",
+  "ruff>=0.8", "mypy>=1.13", "types-PyYAML",
+  "import-linter>=2.1",
+]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py310"
 
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
+testpaths = ["tests/unit", "tests/integration"]
+addopts = "-q"
+
+[tool.ruff.lint]
+# Explicit rather than inherited, so a ruff upgrade cannot silently change what
+# "lint clean" means in CI.
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+  "E501",     # line length is handled by the formatter
+  "UP017",    # datetime.UTC is 3.11+; timezone.utc keeps this runnable on 3.10
+  "SIM905",   # "a b c".split() is more readable than a 60-element list literal
+  "RUF012",   # ClassVar annotations on plain class attributes add noise here
+  "UP042",    # StrEnum is 3.11+; (str, Enum) is also what Pydantic expects
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Entry points and tests insert the repo root on sys.path before importing, so
+# their imports cannot be at the top of the file.
+"scripts/*.py" = ["E402"]
+"tests/**" = ["E402", "B011", "SIM117"]
+# The eval harness and the loader deliberately catch broad exceptions: both
+# collect every problem rather than failing on the first one.
+"agents/evals/run.py" = ["E402", "BLE001"]
+"services/semantic/loader.py" = ["BLE001"]
+
+# pyarrow ships no py.typed marker and psycopg is an optional Phase 1 dependency.
+# Scoped per-module so a missing stub cannot silently weaken checking elsewhere.
+[[tool.mypy.overrides]]
+module = ["pyarrow.*", "psycopg.*", "duckdb.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+omit = [
+  # Unimplemented Phase 2 stubs. Counting a NotImplementedError body against
+  # coverage makes the number measure how much is left to build, not how well
+  # what exists is tested.
+  "services/evidence/decomposition.py",
+  "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]

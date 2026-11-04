@@ -22,17 +22,17 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from services.query.executor import DuckDBEngine, Executor  # noqa: E402
-from services.semantic.compiler import Compiler  # noqa: E402
-from services.semantic.loader import load_file  # noqa: E402
-from services.semantic.models import (  # noqa: E402
+from services.query.executor import DuckDBEngine, Executor
+from services.semantic.compiler import Compiler
+from services.semantic.loader import load_file
+from services.semantic.models import (
     Comparison,
     Filter,
     MetricRef,
     TimeGrain,
     TimeRange,
 )
-from services.semantic.resolver import MetricResolver  # noqa: E402
+from services.semantic.resolver import MetricResolver
 
 pytest.importorskip("duckdb")
 
