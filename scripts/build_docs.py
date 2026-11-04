@@ -54,7 +54,7 @@ def main() -> None:
     index += (
         "\n---\n\n"
         "The full document is also available as a "
-        "[single Markdown file](https://github.com/ankushunfolds/ai-analyst/blob/main/docs/BLUEPRINT.md).\n"
+        "[single Markdown file](https://github.com/ankushkumar74/FRED-AI/blob/main/docs/BLUEPRINT.md).\n"
     )
     (OUT / "index.md").write_text(index, encoding="utf-8")
 

@@ -180,7 +180,7 @@ class PostgresEngine(QueryEngine):
 
     dialect = "postgres"
 
-    def __init__(self, dsn: str, *, application_name: str = "ai-analyst") -> None:
+    def __init__(self, dsn: str, *, application_name: str = "fred") -> None:
         self.dsn = dsn
         self.application_name = application_name
 

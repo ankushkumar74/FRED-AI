@@ -1,9 +1,9 @@
-# AI Analyst — Technical Blueprint
+# FRED — Technical Blueprint
 
 **Status:** Implementation blueprint, v1.0
 **Audience:** Founding engineering team
 **Assumed context:** Pre-seed, 1–3 engineers, bring-your-own-warehouse posture
-**Date:** August 2026
+**Date:** November 2026
 
 ---
 
@@ -68,7 +68,7 @@ Human analysts have all four. Dashboards have none. LLMs have (3) and (4) but ha
 
 This yields the product's one-sentence definition:
 
-> **AI Analyst is a system that produces defensible causal explanations of business metric movements, and remembers them.**
+> **FRED is an AI analyst: a system that produces defensible causal explanations of business metric movements, and remembers them.**
 
 The word that matters is *defensible*. Not "AI-powered insights." Not "chat with your data." A claim that a competent CFO could challenge in a board meeting, where the system can produce the query, the rows, the statistical test, and the confidence interval behind every number.
 
@@ -90,7 +90,7 @@ The product ladder is: **Answer → Explain → Predict → Recommend → Notify
 
 The honest framing: these are *authoring tools for analysts*. The output is a dashboard; the consumer is an executive; the bottleneck is the analyst in the middle.
 
-| Dimension | Power BI / Tableau / Looker | AI Analyst |
+| Dimension | Power BI / Tableau / Looker | FRED |
 |---|---|---|
 | **Primary output** | A dashboard | An explanation with a recommendation |
 | **Question answered** | What happened | Why it happened, what to do |
@@ -109,7 +109,7 @@ We do not compete with these tools on visualization polish. We will lose that fi
 
 A general assistant with a database connector can already write SQL and describe a CSV. Founders will ask "isn't this a wrapper?" It is not, for six reasons that are all *systems* reasons, not *model* reasons:
 
-| Capability | General LLM + DB access | AI Analyst |
+| Capability | General LLM + DB access | FRED |
 |---|---|---|
 | **Metric correctness** | Guesses that `revenue = SUM(amount)`. Silently includes refunds, test accounts, intercompany | Resolves `revenue` through a governed semantic layer with the company's actual definition, filters, and grain |
 | **Root cause** | Narrates a plausible story from one query | Runs mix-shift decomposition, seasonality-adjusted anomaly detection, and contribution analysis across every dimension, then ranks by statistical strength |
@@ -701,7 +701,7 @@ Concretely, `shared/interfaces/` defines `JobQueue`, `EventBus`, `VectorStore`, 
 A monorepo. One version of truth for the API contract, one CI pipeline, atomic cross-cutting changes. Split it when you have separate teams, not before.
 
 ```
-ai-analyst/
+fred-ai/
 ├── apps/
 │   ├── web/                      # Next.js — the only user-facing app
 │   │   ├── app/                  # App Router. Route groups: (auth) (app) (public)
@@ -3067,7 +3067,7 @@ Two disciplines make this real rather than aspirational: **quarterly restore dri
 
 ```mermaid
 gantt
-    title AI Analyst — build sequence
+    title FRED — build sequence
     dateFormat YYYY-MM-DD
     axisFormat %b
 
@@ -3267,7 +3267,7 @@ quadrantChart
     "Tellius": [0.58, 0.62]
     "ChatGPT / Claude": [0.44, 0.86]
     "MS Copilot": [0.30, 0.78]
-    "AI Analyst": [0.86, 0.84]
+    "FRED": [0.86, 0.84]
 ```
 
 ## 22.2 Detailed comparison

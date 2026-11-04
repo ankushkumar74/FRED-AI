@@ -1,7 +1,10 @@
-# AI Analyst
+# FRED
 
-Production skeleton for the AI Analyst platform. The full architectural rationale
-lives in [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) — read it before changing structure.
+FRED is an AI analyst. It explains *why* business metrics moved, with the evidence
+attached — not another dashboard, and not a chatbot that guesses at numbers.
+
+The full architectural rationale lives in [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md).
+Read it before changing structure.
 
 ## Quick start
 

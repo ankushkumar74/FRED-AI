@@ -1,10 +1,10 @@
-site_name: AI Analyst — Technical Blueprint
+site_name: FRED — Technical Blueprint
 site_description: >
-  Production architecture for an AI Analyst platform: a system that produces
+  Production architecture for FRED, an AI analyst: a system that produces
   defensible causal explanations of business metric movements, and remembers them.
-site_url: https://ankushunfolds.github.io/ai-analyst/
-repo_url: https://github.com/ankushunfolds/ai-analyst
-repo_name: ankushunfolds/ai-analyst
+site_url: https://ankushkumar74.github.io/FRED-AI/
+repo_url: https://github.com/ankushkumar74/FRED-AI
+repo_name: ankushkumar74/FRED-AI
 docs_dir: site_docs
 
 theme:
@@ -60,4 +60,4 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/ankushunfolds
+      link: https://github.com/ankushkumar74
