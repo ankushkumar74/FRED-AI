@@ -11,8 +11,16 @@
 const PYODIDE_VERSION = "314.0.7";
 const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
 
-// Resolve asset URLs against this module, so the page works at any path depth.
-const asset = (name) => new URL(name, import.meta.url).href;
+// Resolve asset URLs against this module, carrying forward the build version
+// from our own script tag (?v=<hash>, stamped in by scripts/build_demo.py).
+// Every asset is then uniquely named per build, which is the only reliable way
+// to stop a browser pairing today's JavaScript with last deploy's wheel.
+const BUILD = new URL(import.meta.url).searchParams.get("v") ?? "";
+const asset = (name) => {
+  const url = new URL(name, import.meta.url);
+  if (BUILD) url.searchParams.set("v", BUILD);
+  return url.href;
+};
 
 const el = (id) => document.getElementById(id);
 const dot = el("dot");
@@ -162,7 +170,10 @@ async function main() {
   pyodide.runPython(`import sys; sys.path.insert(0, "/fred")`);
   const bridge = pyodide.pyimport("bridge");
   const boot = JSON.parse(bridge.boot());
-  if (!boot.ok) throw new Error(boot.error);
+  if (!boot.ok) {
+    if (boot.traceback) console.error(boot.traceback);
+    throw new Error(boot.error);
+  }
 
   const total = ((performance.now() - t0) / 1000).toFixed(1);
   setStatus(

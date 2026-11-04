@@ -15,6 +15,7 @@ Output is gitignored; CI rebuilds it on every deploy.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
@@ -81,12 +82,27 @@ def main() -> int:
     exported = DuckDBEngine(database).export_parquet(OUT)
 
     wheel_name = build_wheel(OUT)
+
+    # Content-hash every asset into one version string, and stamp it onto the
+    # script tag. The wheel filename carries only the package version, which does
+    # not change between commits, so without this a browser happily reuses a
+    # cached wheel from a previous deploy — which it did, and the resulting
+    # mixture of new JavaScript and an old wheel failed in a way that pointed
+    # nowhere near the cache.
+    digest = hashlib.sha256()
+    for f in sorted(OUT.iterdir()):
+        digest.update(f.read_bytes())
+    version = digest.hexdigest()[:12]
+
     (OUT / "manifest.json").write_text(
-        json.dumps({"wheel": wheel_name, "tables": exported}, indent=2) + "\n"
+        json.dumps({"wheel": wheel_name, "tables": exported, "version": version}, indent=2) + "\n"
     )
 
+    index = OUT / "index.html"
+    index.write_text(index.read_text().replace('src="./fred.js"', f'src="./fred.js?v={version}"'))
+
     total = sum(f.stat().st_size for f in OUT.iterdir()) / 1_000_000
-    print(f"built demo into {OUT.relative_to(ROOT)} ({total:.1f} MB)")
+    print(f"built demo into {OUT.relative_to(ROOT)} ({total:.1f} MB, version {version})")
     for f in sorted(OUT.iterdir()):
         print(f"  {f.stat().st_size / 1000:>8.0f} KB  {f.name}")
     return 0
