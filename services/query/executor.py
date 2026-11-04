@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pyarrow as pa
 
@@ -149,13 +149,17 @@ class DuckDBEngine(QueryEngine):
         import duckdb
 
         try:
-            result = self._con.execute(sql)
-            # Never `.arrow()`: newer DuckDB returns a RecordBatchReader from it,
-            # which is single-pass and so cannot be cached or read twice. We need a
-            # materialised Table. `to_arrow_table` is the current spelling and
-            # `fetch_arrow_table` the deprecated one, so prefer whichever exists.
-            fetch = getattr(result, "to_arrow_table", None) or result.fetch_arrow_table
-            return fetch()
+            # `con.sql(...).to_arrow_table()` rather than `con.execute(...)`:
+            # going through the DB-API result copies every row an extra time, and
+            # DuckDB warns about it. The relation path hands back Arrow directly.
+            #
+            # Never `.arrow()` either — newer DuckDB returns a RecordBatchReader
+            # from it, which is single-pass and so cannot be cached or re-read.
+            # We need a materialised Table.
+            relation = self._con.sql(sql)
+            if relation is None:  # pragma: no cover - validator rejects non-SELECT
+                return pa.table({})
+            return cast("pa.Table", relation.to_arrow_table())
         except duckdb.Error as exc:
             raise QueryError(str(exc), sql=sql, dialect=self.dialect) from exc
 

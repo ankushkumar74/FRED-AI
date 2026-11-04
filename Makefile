@@ -1,7 +1,23 @@
-.PHONY: install dev down migrate seed test eval demo lint fmt arch api worker web
+.PHONY: install verify dev down migrate seed test eval demo lint fmt arch api worker web
 
 install:        ## editable install with dev + docs extras
 	pip install -e ".[dev,docs]"
+
+verify:         ## everything CI runs, in CI's order — run this before pushing
+	@echo "note: CI uses Python 3.12. Verifying on another version can miss"
+	@echo "      type errors that only appear with 3.12's dependency resolution."
+	@python -c "import sys; print(f'  running on {sys.version.split()[0]}')"
+	ruff check --output-format=concise .
+	mypy --strict services shared agents
+	lint-imports --config .importlinter
+	pytest tests/unit tests/integration \
+	  --cov=services/semantic --cov=services/query --cov=services/evidence \
+	  --cov-fail-under=85
+	python scripts/seed_demo.py --out demo.duckdb
+	python -m agents.evals.run --dataset tests/evals/golden.jsonl --database demo.duckdb
+	python scripts/build_docs.py && cp mkdocs.yml /tmp/mkdocs.bak && cat nav.generated.yml >> mkdocs.yml \
+	  && mkdocs build --strict; cp /tmp/mkdocs.bak mkdocs.yml
+	@echo "all CI checks passed"
 
 dev:            ## full local stack
 	docker compose up --build
