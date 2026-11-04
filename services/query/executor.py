@@ -163,6 +163,41 @@ class DuckDBEngine(QueryEngine):
         except duckdb.Error as exc:
             raise QueryError(str(exc), sql=sql, dialect=self.dialect) from exc
 
+    def load_files(self, tables: dict[str, str | Path]) -> None:
+        """Materialise local Parquet/CSV files as tables in this connection.
+
+        This is the mechanism behind file uploads (blueprint 3.4: anything that is
+        not a queryable warehouse has to be materialised before it can be joined),
+        and it is also how the browser demo loads its fixture.
+
+        Parquet rather than a `.duckdb` file on purpose: the database format is
+        tied to a storage version, so a file written by one DuckDB build is
+        unreadable by an older one — which is exactly what broke the WASM demo.
+        Parquet is an interchange format and does not move underneath you.
+
+        Reads go through `read_parquet`/`read_csv`, which the validator forbids in
+        user queries. That is not a contradiction: this is trusted setup with a
+        path we chose, not a query someone asked for.
+        """
+        for table, path in tables.items():
+            source = str(path).replace("'", "''")
+            reader = "read_csv_auto" if str(path).endswith((".csv", ".csv.gz")) else "read_parquet"
+            self._con.execute(
+                f'CREATE OR REPLACE TABLE "{table}" AS SELECT * FROM {reader}(\'{source}\')'
+            )
+
+    def export_parquet(self, directory: str | Path) -> dict[str, str]:
+        """Write every non-internal table to Parquet. Returns table -> filename."""
+        out = Path(directory)
+        out.mkdir(parents=True, exist_ok=True)
+        written: dict[str, str] = {}
+        for table in sorted(self.list_tables()):
+            target = out / f"{table}.parquet"
+            escaped = str(target).replace("'", "''")
+            self._con.execute(f"COPY \"{table}\" TO '{escaped}' (FORMAT PARQUET)")
+            written[table] = target.name
+        return written
+
     def list_tables(self) -> set[str]:
         rows = self._con.execute(
             "SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN "

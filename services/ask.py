@@ -140,15 +140,26 @@ class Ask:
     def __init__(
         self,
         metrics_path: str | Path,
-        database: str | Path,
+        database: str | Path | None = None,
         *,
+        engine: DuckDBEngine | None = None,
         today: date = DEMO_TODAY,
         dialect: str = "duckdb",
     ) -> None:
+        """Pass `database` for a DuckDB file, or `engine` for a prepared connection.
+
+        The injection seam exists because the browser demo builds its connection
+        from Parquet, and because a warehouse connection will arrive the same way.
+        """
+        if engine is None:
+            if database is None:
+                raise ValueError("pass either `database` or `engine`")
+            engine = DuckDBEngine(database)
+
         self.model: SemanticModel = load_file(metrics_path)
         self.resolver = MetricResolver(self.model)
         self.compiler = Compiler(self.model, dialect=dialect)
-        self.executor = Executor(engine=DuckDBEngine(database), max_rows=100_000)
+        self.executor = Executor(engine=engine, max_rows=100_000)
         self.today = today
 
     # ---- catalogue, for the UI ------------------------------------------

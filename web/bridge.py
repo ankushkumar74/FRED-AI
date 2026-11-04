@@ -14,17 +14,28 @@ import traceback
 from pathlib import Path
 
 from services.ask import Ask
+from services.query.executor import DuckDBEngine
 
 _FRED: Ask | None = None
 _BOOT_MS: int = 0
 
 
-def boot(metrics_path: str = "/fred/ecommerce.yaml", database: str = "/fred/demo.duckdb") -> str:
-    """Load the metric pack and open the fixture. Returns a JSON status blob."""
+def boot(metrics_path: str = "/fred/ecommerce.yaml", data_dir: str = "/fred") -> str:
+    """Load the metric pack, build an in-memory DuckDB from Parquet, and report.
+
+    Parquet rather than a shipped .duckdb file: the database format is tied to a
+    storage version, and the version CI writes with is newer than the one
+    Pyodide's WASM build can read. Parquet does not move underneath us.
+    """
     global _FRED, _BOOT_MS
     started = time.perf_counter()
     try:
-        _FRED = Ask(metrics_path=Path(metrics_path), database=Path(database))
+        engine = DuckDBEngine(":memory:", read_only=False)
+        tables = {f.stem: str(f) for f in sorted(Path(data_dir).glob("*.parquet"))}
+        if not tables:
+            raise RuntimeError(f"no parquet files found in {data_dir}")
+        engine.load_files(tables)
+        _FRED = Ask(metrics_path=Path(metrics_path), engine=engine)
         _BOOT_MS = int((time.perf_counter() - started) * 1000)
         return json.dumps(
             {

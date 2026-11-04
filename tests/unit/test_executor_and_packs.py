@@ -165,3 +165,42 @@ class TestMetricPackLoading:
     def test_empty_directory_is_an_error(self, tmp_path: Path) -> None:
         with pytest.raises(SemanticLoadError, match="no semantic definition files"):
             load_directory(tmp_path)
+
+
+class TestFileLoading:
+    """Parquet round-trip — the mechanism behind file uploads and the web demo."""
+
+    def test_export_and_reload(self, engine: DuckDBEngine, tmp_path: Path) -> None:
+        exported = engine.export_parquet(tmp_path)
+        assert "fct_orders" in exported
+
+        fresh = DuckDBEngine(":memory:", read_only=False)
+        fresh.load_files({t: tmp_path / f for t, f in exported.items()})
+        assert fresh.list_tables() == engine.list_tables()
+        assert Executor(engine=fresh).execute(
+            "SELECT COUNT(*) AS value FROM fct_orders"
+        ).scalar() == 3
+
+    def test_export_skips_internal_tables(self, engine: DuckDBEngine, tmp_path: Path) -> None:
+        """_internal_audit must not be shipped to a browser or anywhere else."""
+        assert not any(name.startswith("_") for name in engine.export_parquet(tmp_path))
+
+    def test_values_survive_the_round_trip(self, engine: DuckDBEngine, tmp_path: Path) -> None:
+        """A fixture that changes value in transit would silently invalidate evals."""
+        before = Executor(engine=engine).execute(
+            "SELECT SUM(amount) AS value FROM fct_orders"
+        ).scalar()
+        exported = engine.export_parquet(tmp_path)
+        fresh = DuckDBEngine(":memory:", read_only=False)
+        fresh.load_files({t: tmp_path / f for t, f in exported.items()})
+        after = Executor(engine=fresh).execute("SELECT SUM(amount) AS value FROM fct_orders").scalar()
+        assert float(before) == float(after)
+
+    def test_csv_is_also_accepted(self, engine: DuckDBEngine, tmp_path: Path) -> None:
+        csv = tmp_path / "uploaded.csv"
+        csv.write_text("id,label\n1,alpha\n2,beta\n")
+        fresh = DuckDBEngine(":memory:", read_only=False)
+        fresh.load_files({"uploaded": csv})
+        assert Executor(engine=fresh).execute(
+            "SELECT COUNT(*) AS value FROM uploaded"
+        ).scalar() == 2

@@ -70,11 +70,19 @@ def main() -> int:
     for name in ("index.html", "fred.js", "bridge.py"):
         shutil.copy2(WEB / name, OUT / name)
     shutil.copy2(METRICS, OUT / "ecommerce.yaml")
-    shutil.copy2(database, OUT / "demo.duckdb")
+
+    # Parquet, not the .duckdb file. DuckDB's database format carries a storage
+    # version, so a fixture written by the CI runner's DuckDB is unreadable by
+    # the older build inside Pyodide — which is exactly how the first deploy
+    # failed. Parquet is an interchange format and stays readable.
+    sys.path.insert(0, str(ROOT))
+    from services.query.executor import DuckDBEngine
+
+    exported = DuckDBEngine(database).export_parquet(OUT)
 
     wheel_name = build_wheel(OUT)
     (OUT / "manifest.json").write_text(
-        json.dumps({"wheel": wheel_name, "fixture": "demo.duckdb"}, indent=2) + "\n"
+        json.dumps({"wheel": wheel_name, "tables": exported}, indent=2) + "\n"
     )
 
     total = sum(f.stat().st_size for f in OUT.iterdir()) / 1_000_000

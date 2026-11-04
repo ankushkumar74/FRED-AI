@@ -148,9 +148,10 @@ async function main() {
   const manifest = await (await fetch(asset("manifest.json"))).json();
   await micropip.install(asset(manifest.wheel));
 
-  setStatus("Loading the dataset (2.6 MB)…", "busy");
+  setStatus("Loading the dataset (~3 MB)…", "busy");
   pyodide.FS.mkdirTree("/fred");
-  for (const name of ["demo.duckdb", "ecommerce.yaml", "bridge.py"]) {
+  const assets = ["ecommerce.yaml", "bridge.py", ...Object.values(manifest.tables)];
+  for (const name of assets) {
     const res = await fetch(asset(name));
     if (!res.ok) throw new Error(`could not fetch ${name}: HTTP ${res.status}`);
     const buf = new Uint8Array(await res.arrayBuffer());
