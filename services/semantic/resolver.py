@@ -19,8 +19,9 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from .models import Metric, SemanticModel
 
@@ -230,7 +231,7 @@ class BM25Index:
 
 
 def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
@@ -262,7 +263,7 @@ class MetricResolver:
         if embeddings is not None:
             keys = [m.key for m in model.metrics]
             texts = [m.search_text for m in model.metrics]
-            self._vectors = dict(zip(keys, embeddings.embed(texts)))
+            self._vectors = dict(zip(keys, embeddings.embed(texts), strict=True))
 
     # ---- scoring ------------------------------------------------------
 
@@ -560,11 +561,11 @@ def _longest_phrase_match(query: str, phrases: Sequence[str]) -> tuple[bool, str
         normalized = _stem_phrase(phrase)
         if not normalized:
             continue
-        if re.search(rf"(?<![a-z0-9]){re.escape(normalized)}(?![a-z0-9])", haystack):
-            if len(normalized.split()) > len(best.split()) or (
-                len(normalized.split()) == len(best.split()) and len(normalized) > len(best)
-            ):
-                best = normalized
+        if re.search(rf"(?<![a-z0-9]){re.escape(normalized)}(?![a-z0-9])", haystack) and (
+            len(normalized.split()) > len(best.split())
+            or (len(normalized.split()) == len(best.split()) and len(normalized) > len(best))
+        ):
+            best = normalized
     return bool(best), best
 
 

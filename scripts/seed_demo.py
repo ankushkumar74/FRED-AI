@@ -295,7 +295,7 @@ def _bulk_insert(con, table: str, rows: list[tuple], columns: list[str]) -> None
 
     arrow_table = pa.table({name: [row[i] for row in rows] for i, name in enumerate(columns)})
     con.register("_staging", arrow_table)
-    con.execute(f"INSERT INTO {table} SELECT * FROM _staging")  # noqa: S608 - table name is a literal
+    con.execute(f"INSERT INTO {table} SELECT * FROM _staging")  # table name is a literal, not input
     con.unregister("_staging")
 
 

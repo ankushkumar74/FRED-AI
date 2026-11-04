@@ -4,7 +4,8 @@ Every call site depends on these, never on a concrete implementation.
 See BLUEPRINT 4.7 — this module is why "build the interface now, the
 implementation later" is achievable rather than aspirational.
 """
-from typing import Protocol, Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any, Protocol
 
 
 class JobQueue(Protocol):

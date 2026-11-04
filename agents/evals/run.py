@@ -35,11 +35,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from services.query.executor import DuckDBEngine, Executor  # noqa: E402
-from services.semantic.compiler import Compiler  # noqa: E402
-from services.semantic.loader import load_file  # noqa: E402
-from services.semantic.models import MetricRef, TimeGrain, TimeRange  # noqa: E402
-from services.semantic.resolver import MetricResolver  # noqa: E402
+from services.query.executor import DuckDBEngine, Executor
+from services.semantic.compiler import Compiler
+from services.semantic.loader import load_file
+from services.semantic.models import MetricRef, TimeGrain, TimeRange
+from services.semantic.resolver import MetricResolver
+
+#: (group key tuple, measure value) — the shape both sides are normalised into
+#: before comparison, so column naming and row order cannot cause a false failure.
+ComparableRow = tuple[tuple[str, ...], float | None]
 
 VALUE_TOLERANCE = 0.001  # 0.1% — covers decimal/float representation, nothing more
 
@@ -81,10 +85,10 @@ def _build_ref(spec: dict[str, Any]) -> MetricRef:
     )
 
 
-def _comparable(rows: list[dict[str, Any]]) -> list[tuple]:
+def _comparable(rows: list[dict[str, Any]]) -> list[ComparableRow]:
     """Normalise a result set so two queries can be compared regardless of
     column naming, column order, or row order."""
-    normalized: list[tuple] = []
+    normalized: list[ComparableRow] = []
     for row in rows:
         keys: list[str] = []
         value: float | None = None
@@ -102,10 +106,10 @@ def _comparable(rows: list[dict[str, Any]]) -> list[tuple]:
     return sorted(normalized, key=lambda item: (item[0], item[1] is None))
 
 
-def _values_match(a: list[tuple], b: list[tuple]) -> tuple[bool, str]:
+def _values_match(a: list[ComparableRow], b: list[ComparableRow]) -> tuple[bool, str]:
     if len(a) != len(b):
         return False, f"row count {len(a)} vs reference {len(b)}"
-    for (keys_a, value_a), (keys_b, value_b) in zip(a, b):
+    for (keys_a, value_a), (keys_b, value_b) in zip(a, b, strict=True):
         if keys_a != keys_b:
             return False, f"group keys {keys_a} vs {keys_b}"
         if value_a is None or value_b is None:

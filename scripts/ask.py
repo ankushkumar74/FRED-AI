@@ -30,12 +30,12 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from services.query.executor import DuckDBEngine, Executor  # noqa: E402
-from services.query.validator import UnsafeSQL  # noqa: E402
-from services.semantic.compiler import Compiler, CompileError  # noqa: E402
-from services.semantic.loader import load_file  # noqa: E402
-from services.semantic.models import Comparison, MetricRef, TimeGrain, TimeRange  # noqa: E402
-from services.semantic.resolver import MetricResolver  # noqa: E402
+from services.query.executor import DuckDBEngine, Executor
+from services.query.validator import UnsafeSQL
+from services.semantic.compiler import CompileError, Compiler
+from services.semantic.loader import load_file
+from services.semantic.models import Comparison, MetricRef, TimeGrain, TimeRange
+from services.semantic.resolver import MetricResolver
 
 #: The fixture's "today". Real deployments read this from the connection watermark.
 TODAY = date(2026, 8, 2)

@@ -30,7 +30,7 @@ def main() -> None:
     OUT.mkdir(parents=True)
 
     # Everything before "# Part 1" becomes the landing page.
-    parts = re.split(r"^# Part (\d+) — (.+)$", raw, flags=re.M)
+    parts = re.split(r"^# Part (\d+) — (.+)$", raw, flags=re.MULTILINE)
     preamble, rest = parts[0], parts[1:]
 
     nav_lines: list[str] = []
@@ -46,9 +46,9 @@ def main() -> None:
         (OUT / f"{slug}.md").write_text(content, encoding="utf-8")
 
     # Landing page: strip the original TOC table, point it at the split pages.
-    index = re.sub(r"## Table of contents.*?(?=^---$)", "", preamble, flags=re.S | re.M)
+    index = re.sub(r"## Table of contents.*?(?=^---$)", "", preamble, flags=re.DOTALL | re.MULTILINE)
     index += "\n## Contents\n\n"
-    for (slug, content), line in zip(pages, nav_lines):
+    for slug, content in pages:
         title = content.split("\n", 1)[0].lstrip("# ")
         index += f"- [{title}]({slug}.md)\n"
     index += (

@@ -97,7 +97,9 @@ def validate(
     warnings: list[str] = []
 
     try:
-        statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
+        statements: list[exp.Expression] = [
+            s for s in sqlglot.parse(sql, read=dialect) if isinstance(s, exp.Expression)
+        ]
     except ParseError as exc:
         raise UnsafeSQL([f"could not parse as {dialect}: {exc}"], sql) from exc
 
@@ -163,11 +165,23 @@ def lineage(sql: str, dialect: str) -> dict[str, list[str]]:
     Free, because validation already parses. BLUEPRINT 6.3 stores this as
     `queries.ast_lineage` so every answer can show what it read.
     """
-    tree = sqlglot.parse_one(sql, read=dialect)
+    tree = _parse_expression(sql, dialect)
     return {
         "tables": _referenced_tables(tree, dialect),
         "columns": sorted({c.sql(dialect=dialect) for c in tree.find_all(exp.Column) if c.name}),
     }
+
+
+def _parse_expression(sql: str, dialect: str) -> exp.Expression:
+    """Parse to a concrete Expression.
+
+    `sqlglot.parse_one` is annotated as returning the broader `Expr`, which has
+    no `find_all`. Narrowing once here keeps the cast out of every call site.
+    """
+    tree = sqlglot.parse_one(sql, read=dialect)
+    if not isinstance(tree, exp.Expression):
+        raise UnsafeSQL([f"could not parse as {dialect}"], sql)
+    return tree
 
 
 def _normalize(name: str) -> str:
@@ -233,23 +247,28 @@ def _apply_limit(tree: exp.Expression, max_rows: int) -> tuple[exp.Expression, b
     A query that already asks for 10 rows keeps asking for 10. A query asking for
     a million gets clamped. A query with no limit gets one.
     """
+    # Inline tuple rather than a module constant: isinstance against a named
+    # tuple[type[...], ...] does not narrow, and the narrowing is what proves
+    # `.limit()` exists. `exp.With` is deliberately absent — it has no `.limit()`,
+    # and a top-level `WITH ... SELECT` parses as a Select anyway.
+    if not isinstance(tree, (exp.Select, exp.Union, exp.Subquery)):
+        return tree, False
+
     existing = tree.args.get("limit")
     if existing is not None:
         try:
             current = int(existing.expression.name)
         except (AttributeError, ValueError):
+            # An expression we cannot read, e.g. a placeholder. Leave it alone
+            # rather than silently replacing the caller's intent.
             return tree, False
         if current <= max_rows:
             return tree, False
-        return tree.limit(max_rows), True
 
-    if isinstance(tree, (exp.Select, exp.Union, exp.With)):
-        return tree.limit(max_rows), True
-    return tree, False
+    return tree.limit(max_rows), True
 
 
 def _has_comparison_predicate(tree: exp.Expression) -> bool:
-    for where in tree.find_all(exp.Where):
-        if any(True for _ in where.find_all(exp.Binary)):
-            return True
-    return False
+    return any(
+        any(True for _ in where.find_all(exp.Binary)) for where in tree.find_all(exp.Where)
+    )

@@ -25,10 +25,8 @@ import sqlglot
 from sqlglot import exp
 
 from .models import (
-    TimeIntelligence,
     AggType,
     Comparison,
-    Dimension,
     Entity,
     Filter,
     Join,
@@ -37,6 +35,7 @@ from .models import (
     SemanticError,
     SemanticModel,
     TimeGrain,
+    TimeIntelligence,
     TimeRange,
 )
 
@@ -102,7 +101,10 @@ class Compiler:
         else:
             sql = self._compile_single(metric, ref, notes)
 
-        tree = sqlglot.parse_one(sql, read=AUTHORING_DIALECT)
+        parsed = sqlglot.parse_one(sql, read=AUTHORING_DIALECT)
+        if not isinstance(parsed, exp.Expression):  # pragma: no cover - our own SQL
+            raise CompileError(f"compiler produced unparseable SQL for '{metric.key}'")
+        tree: exp.Expression = parsed
         out = tree.sql(dialect=self.dialect, pretty=True)
 
         return CompiledQuery(

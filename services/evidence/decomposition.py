@@ -9,6 +9,7 @@ TODO(phase-2): implement. See BLUEPRINT 12.3 for the formulas and the
 Adtributor-style bounded multi-dimensional search.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -28,9 +29,9 @@ class Decomposition:
     unexplained_share: float    # ALWAYS reported. Analysts trust residuals.
 
 
-def decompose_additive(*args, **kwargs) -> Decomposition:  # noqa: D103
+def decompose_additive(*args: object, **kwargs: object) -> Decomposition:
     raise NotImplementedError("Phase 2 — BLUEPRINT 12.3")
 
 
-def decompose_ratio(*args, **kwargs) -> Decomposition:  # noqa: D103
+def decompose_ratio(*args: object, **kwargs: object) -> Decomposition:
     raise NotImplementedError("Phase 2 — BLUEPRINT 12.3")

@@ -5,8 +5,10 @@ Two failures and we degrade to evidence cards with no prose: producing a
 less impressive output is always better than producing a wrong one.
 """
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass
+from typing import Any
 
 NUMBER = re.compile(r"[-+]?\$?\d[\d,]*\.?\d*\s?%?")
 CAUSAL_VERBS = ("caused by", "driven by", "because of", "due to", "resulted from")
@@ -20,7 +22,7 @@ class VerificationResult:
     hedging_violations: list[str]
 
 
-def verify(narrative: str, findings: list[dict], tolerance: float = 0.005) -> VerificationResult:
+def verify(narrative: str, findings: list[dict[str, Any]], tolerance: float = 0.005) -> VerificationResult:
     """TODO(phase-2): full implementation. See BLUEPRINT 12.5.
 
     1. extract every numeric token from the narrative

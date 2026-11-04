@@ -54,7 +54,7 @@ class ResultSet:
 
     @property
     def row_count(self) -> int:
-        return self.table.num_rows
+        return int(self.table.num_rows)
 
     @property
     def columns(self) -> list[str]:
@@ -78,10 +78,10 @@ class ResultSet:
         return digest.hexdigest()[:32]
 
     def rows(self) -> list[dict[str, Any]]:
-        return self.table.to_pylist()
+        return list(self.table.to_pylist())
 
     def sample_rows(self, n: int = 5) -> list[dict[str, Any]]:
-        return self.table.slice(0, n).to_pylist()
+        return list(self.table.slice(0, n).to_pylist())
 
     def scalar(self) -> Any:
         """The single value of a 1x1 result, or None when the result is empty.
@@ -101,7 +101,7 @@ class ResultSet:
         return self.table.column(0)[0].as_py()
 
     def column_values(self, name: str) -> list[Any]:
-        return self.table.column(name).to_pylist()
+        return list(self.table.column(name).to_pylist())
 
 
 def _is_internal(table_name: str) -> bool:
