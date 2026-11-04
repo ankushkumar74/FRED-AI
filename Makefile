@@ -1,4 +1,7 @@
-.PHONY: dev down migrate seed test eval demo lint fmt arch api worker web
+.PHONY: install dev down migrate seed test eval demo lint fmt arch api worker web
+
+install:        ## editable install with dev + docs extras
+	pip install -e ".[dev,docs]"
 
 dev:            ## full local stack
 	docker compose up --build

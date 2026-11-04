@@ -23,7 +23,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install mkdocs-material pymdown-extensions
+      # Same extra the docs CI job uses, so the version that passes on PR is the
+      # version that deploys. A loose duplicate list here would drift.
+      - run: pip install -e ".[docs]"
       - name: Split BLUEPRINT.md into site pages
         run: python scripts/build_docs.py
       - name: Merge generated nav into mkdocs config

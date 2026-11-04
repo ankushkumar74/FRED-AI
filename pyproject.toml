@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "fred-ai"
 version = "0.1.0"
@@ -36,7 +40,6 @@ agents = ["litellm>=1.52", "langfuse>=2.53"]
 ops = ["opentelemetry-sdk>=1.28", "sentry-sdk>=2.18", "boto3>=1.35"]
 docs = ["mkdocs-material>=9.5", "pymdown-extensions>=10.0"]
 
-[dependency-groups]
 dev = [
   "pytest>=8.3", "pytest-cov",
   "ruff>=0.8", "mypy>=1.13", "types-PyYAML",
@@ -99,3 +102,6 @@ exclude_lines = [
   "if TYPE_CHECKING:",
   "if __name__ == .__main__.:",
 ]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "services*", "shared*", "workers*", "pipelines*"]
