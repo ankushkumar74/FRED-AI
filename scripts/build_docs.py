@@ -47,6 +47,13 @@ def main() -> None:
 
     # Landing page: strip the original TOC table, point it at the split pages.
     index = re.sub(r"## Table of contents.*?(?=^---$)", "", preamble, flags=re.DOTALL | re.MULTILINE)
+    index += (
+        "\n## Try it\n\n"
+        "[**Open the live demo →**](demo/){ .md-button .md-button--primary }\n\n"
+        "Ask FRED a question about a synthetic e-commerce company. The semantic layer, "
+        "SQL compiler, validator and DuckDB all run in your browser via WebAssembly — "
+        "no server, nothing sent anywhere.\n"
+    )
     index += "\n## Contents\n\n"
     for slug, content in pages:
         title = content.split("\n", 1)[0].lstrip("# ")

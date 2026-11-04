@@ -3,7 +3,16 @@ name: Publish docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'mkdocs.yml', 'scripts/build_docs.py', '.github/workflows/pages.yml']
+    paths:
+      - 'docs/**'
+      - 'web/**'
+      - 'services/**'
+      - 'configs/metrics/**'
+      - 'mkdocs.yml'
+      - 'scripts/build_docs.py'
+      - 'scripts/build_demo.py'
+      - 'scripts/seed_demo.py'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -28,6 +37,10 @@ jobs:
       - run: pip install -e ".[docs]"
       - name: Split BLUEPRINT.md into site pages
         run: python scripts/build_docs.py
+      - name: Build the in-browser demo
+        # Must run after build_docs.py, which clears site_docs/. Builds a wheel
+        # from the current source so the live demo always runs this commit.
+        run: python scripts/build_demo.py --seed
       - name: Merge generated nav into mkdocs config
         run: cat nav.generated.yml >> mkdocs.yml
       - run: mkdocs build --strict

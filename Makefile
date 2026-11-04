@@ -1,4 +1,4 @@
-.PHONY: install verify dev down migrate seed test eval demo lint fmt arch api worker web
+.PHONY: install verify site dev down migrate seed test eval demo lint fmt arch api worker web
 
 install:        ## editable install with dev + docs extras
 	pip install -e ".[dev,docs]"
@@ -47,7 +47,15 @@ eval: seed      ## golden-set evaluation — gates every agents/ or semantic/ ch
 	uv run python -m agents.evals.run --dataset tests/evals/golden.jsonl --database demo.duckdb
 
 demo:           ## ask a question end to end, no services required
-	uv run python scripts/ask.py "why did revenue drop last week"
+	python scripts/ask.py "why did revenue drop last week"
+
+site:           ## build the docs site + browser demo, then serve it locally
+	python scripts/build_docs.py
+	python scripts/build_demo.py --seed
+	cp mkdocs.yml /tmp/mkdocs.bak && cat nav.generated.yml >> mkdocs.yml \
+	  && mkdocs build --strict; cp /tmp/mkdocs.bak mkdocs.yml
+	@echo "serving at http://localhost:8000 — the demo is at /demo/"
+	cd site && python -m http.server 8000
 
 
 api:

@@ -45,3 +45,8 @@ site_docs/
 .mypy_cache/
 .ruff_cache/
 nav.generated.yml
+
+# Wheel build artifacts (scripts/build_demo.py)
+build/
+dist/
+*.whl
